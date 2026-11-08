@@ -1,0 +1,17 @@
+[workspace]
+resolver = "3"
+members = ["crates/core", "crates/gui"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[profile.release]
+# 画像処理の速度を優先する
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+strip = true
+# mozjpeg はエラーを unwind で返すため、abort にするとプロセスごと落ちる
+panic = "unwind"

@@ -1,0 +1,16 @@
+[package]
+name = "wio-core"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[lib]
+name = "wio_core"
+
+[dependencies]
+fast_image_resize = "6.1.0"
+img-parts = "0.4.2"
+mozjpeg = "0.10.13"
+rayon = "1.12.0"
+thiserror = "2.0.21"
+zune-jpeg = "0.5.15"
