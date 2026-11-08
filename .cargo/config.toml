@@ -1,0 +1,3 @@
+# VC++ ランタイムのない PC でも exe 単体で動かすため (N-02)
+[target.x86_64-pc-windows-msvc]
+rustflags = ["-C", "target-feature=+crt-static"]

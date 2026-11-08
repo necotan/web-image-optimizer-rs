@@ -1,0 +1,11 @@
+[package]
+name = "wio-gui"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "wio-gui"
+path = "src/main.rs"
+
+[dependencies]
