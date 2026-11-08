@@ -210,7 +210,7 @@ read -> extract metadata -> decode -> correct orientation -> resize -> encode
 - Create a thread pool with `jobs` threads using `rayon::ThreadPoolBuilder`.
 - Check `cancel` before each task starts. If set, the task does not start. Running tasks finish.
 - Report progress through the `on_event` callback. The GUI sends events to an `mpsc::Sender` there and calls `egui::Context::request_repaint()`.
-- Memory estimate: a 24-megapixel image is about 72MB decoded to RGB, so `jobs = 4` peaks around 300MB. Do not make a heavier configuration the default.
+- Memory estimate: a 24-megapixel image is about 72MB decoded to RGB. A running task also holds the resized image, encoder buffers, and the file bytes, so each task measured 1.2 to 1.6 times its decoded image (§11). `jobs = 4` with 24-megapixel photos peaked at 383MB. Do not make a heavier configuration the default.
 
 ## 6. Development Example (crates/core/examples)
 
@@ -347,6 +347,7 @@ Append decisions and measurement results made during implementation.
 | 2026-11-08 | `exiftool -validate` reports the same 4 warnings for this tool's output as for the originals (missing YCbCrPositioning, ComponentsConfiguration, ExifImageWidth, ExifImageHeight in Lightroom exports). Absent tags are not added (§4.5). |
 | 2026-11-08 | GUI release build: 10.4MB (N-03), Windows GUI subsystem (G-10), imports only OS DLLs. Idle memory on this PC (Intel GPU): working set 146MB, private 106MB, above the 50MB target of N-04. A minimal eframe 0.37 glow app with nothing but a label uses 127 to 133MB working set and 92MB private; the Intel OpenGL driver DLLs alone map 84MB. The Japanese font adds about 13MB private, and the rest of this app about 6MB. |
 | 2026-11-08 | Peak memory on the same photos (up to 40 megapixels): 181MB at 1 job, 563MB at 4 jobs. With 24-megapixel files: 113MB and 383MB. This is above the 300MB estimate in §5 and about 1.2 times concurrency × one decoded image (N-04). |
+| 2026-11-08 | Spec change: N-04 no longer sets an absolute idle target. eframe with glow loads the GPU driver at startup, so 50MB cannot be met, and the absolute value depends on the GPU and driver. Idle is now compared with a minimal eframe app on the same PC (this app: +14MB private). The peak bound is 2 × concurrency × one decoded image, because the measured ratio is 1.2 at 4 jobs and up to 1.6 at 1 job. |
 
 ## 12. Open Questions
 

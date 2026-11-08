@@ -114,7 +114,7 @@ The tool has no user-facing command line; the GUI is the only interface. `core` 
 | N-01 | Supported OS | Windows 10/11 (x64) is primary. Keep the project buildable on macOS and Linux (running there is optional). |
 | N-02 | Distribution | A single executable with no additional runtime or DLL. |
 | N-03 | Distribution size | GUI release build **15MB or less** (Japanese fonts are not bundled; OS fonts are loaded). |
-| N-04 | Runtime memory | About **50MB** when idle. Peak during processing stays around concurrency × one decoded image. |
+| N-04 | Runtime memory | Idle: private memory stays within **30MB** of a minimal eframe app (same eframe features, one label) on the same PC. For reference, the development PC shows about 150MB working set and 106MB private, most of it eframe and the GPU driver. Peak during processing: the increase over idle stays within **2 ×** concurrency × one decoded image (width × height × 3 bytes). |
 | N-05 | Speed | Faster than the old version (sequential) on the same PC with the same photos. |
 | N-06 | Quality and compression | At the same quality value, output size stays within about **±15%** of the old version. Quality scales differ between encoders, so tune by measurement. |
 | N-07 | Responsiveness | The GUI does not freeze during conversion (processing runs on a worker thread). |
