@@ -1,0 +1,7 @@
+/target
+
+# documentation (only the specs in docs/ are tracked)
+/docs/*
+!/docs/requirements.md
+!/docs/design.md
+/.claude
