@@ -227,9 +227,9 @@ read -> extract metadata -> decode -> correct orientation -> resize -> encode
 The window is a single screen with four areas, from top to bottom. Labels below are the English text. A language selector sits in the top-right corner, above the Input area.
 
 1. **Input**: a drop area labeled `Drop a folder here`, with a `Select folder...` button to its right. Below them, the selected folder path and the number of JPEGs (e.g. `C:\Photos\2026-08-04 (42 JPEGs)`).
-2. **Settings**: radio buttons for the presets `low`, `default`, and `high`, followed by a `Custom` marker. Below them, a quality slider with its value, then a number input for the long edge in px, labeled `Long edge`, and a number input labeled `Concurrent files`.
-3. **File list**: a table with the columns `File name`, `Original size`, `Output size`, and `Status`. `Output size` shows `-` until the file is done. `Status` shows `Waiting`, `Processing...`, `✓ Done`, or `✗ Failed`.
-4. **Progress and actions**: a progress bar with the processed and total counts (e.g. `12 / 42`), with the `Start` and `Cancel` buttons to its right. Below them, on completion, the summary (e.g. `Done: 42 files / 980MB -> 71MB / 18.3s  0 failed`) and an `Open output folder` button. If any file failed, the failed files and their reasons are listed below the summary.
+2. **Settings**: radio buttons for the presets `low`, `default`, and `high`, followed by a `Custom` marker shown when the values match no preset. Below them, a quality slider with its value, then a number input for the long edge in px, labeled `Long edge`, and a number input labeled `Concurrent files`.
+3. **File list**: a table with the columns `File name`, `Original size`, `Output size`, and `Status`. `Output size` shows `-` until the file is done. `Status` shows `Waiting`, `Processing...`, `✓ Done`, `⚠ Done (warning)`, `✗ Failed`, or `Cancelled`. Hovering a warning or failure shows the reason.
+4. **Progress and actions**: a progress bar with the processed and total counts (e.g. `12 / 42`), with the `Start` button, or the `Cancel` button while running, to its right. Below them, on completion, the summary (e.g. `Done: 42 files / 980MB -> 71MB / 18.3s  0 failed`) and an `Open output folder` button. Files that failed or had warnings are listed below the summary with their reasons.
 
 - Phase 3 adds a preview panel to the right of or below the file list (§7.5).
 - The file list uses `egui_extras::TableBuilder` and draws only the visible rows.
@@ -237,25 +237,23 @@ The window is a single screen with four areas, from top to bottom. Labels below 
 ### 7.2 State
 
 ```rust
-enum Phase { Idle, Running, Done }
-
 struct App {
+    lang: Lang,
+    has_japanese_font: bool,
     input_dir: Option<PathBuf>,
-    files: Vec<FileRow>,          // name, input_bytes, output_bytes, status
-    preset: Option<Preset>,       // None means custom
+    scan_error: Option<ScanError>,
+    rows: Vec<FileRow>,           // path, name, input_bytes, output_bytes, status
     settings: Settings,
     jobs: usize,
-    lang: Lang,
-    phase: Phase,
-    cancel: Arc<AtomicBool>,
-    rx: Option<mpsc::Receiver<BatchEvent>>,
-    summary: Option<BatchSummary>,
-    // Persist only preset / settings / jobs / lang
+    running: Option<Running>,     // receiver, cancel flag, start time
+    finished: Option<Finished>,   // BatchSummary, elapsed time, cancelled
+    // Persist only settings / jobs / lang
 }
 ```
 
-- A worker thread started with `std::thread::spawn` calls `wio_core::run_batch`. The UI thread receives events with `rx.try_recv()` every frame and updates the display.
-- During `Phase::Running`, the conversion settings and input controls are disabled. The language selector stays enabled.
+- The preset is not stored. The selected preset is the one whose settings equal the current values; if none matches, the settings are custom. This keeps the radio buttons and the values from disagreeing.
+- A worker thread started with `std::thread::Builder` calls `wio_core::run_batch` and sends each `BatchEvent`, then the `BatchSummary`, through an `mpsc` channel. It calls `request_repaint()` after each message, so the UI repaints only when something changes. The UI thread drains the channel with `try_recv()` every frame.
+- While `running` is set, the conversion settings and input controls are disabled. The language selector stays enabled.
 - `FileRow` keeps its status as an enum and failures as `ProcessError`, not as display text, so a language change also applies to rows already shown.
 - On the first launch, `lang` comes from `Lang::detect()`. After that, the value saved through eframe persistence is used.
 
@@ -266,6 +264,7 @@ struct App {
 - Windows: look in `C:\Windows\Fonts\` for `YuGothM.ttc`, `meiryo.ttc`, `msgothic.ttc`, in that order.
 - macOS / Linux: look through the usual paths (Hiragino, Noto Sans CJK).
 - If none is found, start with the default fonts, use English regardless of the selected language, and log a warning.
+- Add the font as the lowest-priority fallback, so Latin text keeps egui's font. Yu Gothic draws higher than egui's Latin font, so it gets `FontTweak::y_offset_factor = 0.25`, a value matched on screen.
 
 ### 7.4 Other
 
@@ -346,6 +345,7 @@ Append decisions and measurement results made during implementation.
 | 2026-11-08 | Time on the same 13 photos, two runs each, old version / this tool at 4 jobs / this tool at 1 job: low 7.9s / 1.6 to 1.9s / 6.1 to 6.6s, default 10.6 to 11.1s / 1.7 to 2.3s / 6.0 to 7.1s, high 15.0s / 2.0s / 6.4 to 9.0s. Originals were unchanged. |
 | 2026-11-08 | Location check with exiftool 13.61 on copies of the same photos, with fake GPS written to EXIF and XMP and Orientation set to 6 and 8 on two files: `exiftool -a -G1 -gps:all -xmp:all` prints nothing for this tool's output, and IPTC, Photoshop, IFD1, and MakerNotes are absent. Model, DateTimeOriginal, ExposureTime, FNumber, ISO, and LensModel remain in all 13 files, and both Display P3 profiles remain. The old version's output keeps 24 XMP GPS tags, because it removes only the EXIF GPS IFD. The rotated files match the old version's orientation. |
 | 2026-11-08 | `exiftool -validate` reports the same 4 warnings for this tool's output as for the originals (missing YCbCrPositioning, ComponentsConfiguration, ExifImageWidth, ExifImageHeight in Lightroom exports). Absent tags are not added (§4.5). |
+| 2026-11-08 | GUI release build: 10.4MB (N-03), Windows GUI subsystem (G-10), imports only OS DLLs. Idle memory on this PC (Intel GPU): working set 146MB, private 106MB, above the 50MB target of N-04. A minimal eframe 0.37 glow app with nothing but a label uses 127 to 133MB working set and 92MB private; the Intel OpenGL driver DLLs alone map 84MB. The Japanese font adds about 13MB private, and the rest of this app about 6MB. |
 | 2026-11-08 | Peak memory on the same photos (up to 40 megapixels): 181MB at 1 job, 563MB at 4 jobs. With 24-megapixel files: 113MB and 383MB. This is above the 300MB estimate in §5 and about 1.2 times concurrency × one decoded image (N-04). |
 
 ## 12. Open Questions
