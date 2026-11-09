@@ -39,6 +39,21 @@ pub static STRINGS: Strings = Strings {
     failed_files: "失敗したファイル",
     warned_files: "警告のあったファイル",
 
+    preview_open: "プレビュー",
+    preview_open_hint: "リストでファイルを選んでください（行のダブルクリックでも開けます）",
+    preview_title: "プレビュー",
+    preview_hint: "リストでファイルを選ぶと、変換前後をここに表示します",
+    preview_paused: "変換が終わったら更新します",
+    preview_unavailable: "プレビューを開始できませんでした",
+    preview_before: "変換前（縮小のみ）",
+    preview_after: "変換後",
+    zoom_fit: "全体",
+    zoom_actual: "100%",
+    preview_estimate: |output, input, change| {
+        format!("出力サイズの見込み: {output}（元 {input}、{change:+.1}%）")
+    },
+    preview_too_large: |max| format!("画像が大きすぎて表示できません（GPU の上限 {max}px）"),
+
     warning_exif_removed: "EXIF を読み取れなかったため、EXIF なしで出力しました",
     warning_metadata_unreadable: "メタデータを読み取れなかったため、EXIF と色プロファイルなしで出力しました",
 

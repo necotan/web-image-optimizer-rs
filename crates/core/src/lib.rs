@@ -11,6 +11,8 @@ mod scan;
 
 pub use batch::{BatchEvent, BatchSummary, default_jobs, run_batch};
 pub use error::{ProcessError, ScanError, SettingsError};
-pub use pipeline::{FileReport, Warning, process_file, process_to_memory};
+pub use pipeline::{
+    FileReport, Preview, RgbImage, Warning, preview, process_file, process_to_memory,
+};
 pub use preset::{Preset, Settings};
 pub use scan::scan_dir;

@@ -80,6 +80,21 @@ pub struct Strings {
     pub failed_files: &'static str,
     pub warned_files: &'static str,
 
+    pub preview_open: &'static str,
+    pub preview_open_hint: &'static str,
+    pub preview_title: &'static str,
+    pub preview_hint: &'static str,
+    pub preview_paused: &'static str,
+    pub preview_unavailable: &'static str,
+    pub preview_before: &'static str,
+    pub preview_after: &'static str,
+    pub zoom_fit: &'static str,
+    pub zoom_actual: &'static str,
+    /// 出力サイズ、元のサイズ、増減（%）
+    pub preview_estimate: fn(&str, &str, f64) -> String,
+    /// GPU のテクスチャの上限（px）
+    pub preview_too_large: fn(usize) -> String,
+
     pub warning_exif_removed: &'static str,
     pub warning_metadata_unreadable: &'static str,
 
