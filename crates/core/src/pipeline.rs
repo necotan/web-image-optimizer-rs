@@ -17,7 +17,8 @@ use crate::metadata;
 use crate::orient;
 use crate::preset::Settings;
 
-/// JPEG の仕様上の上限。zune-jpeg の既定値はこれより小さい
+/// JPEG の仕様上の上限
+// zune-jpeg の既定値はこれより小さい
 const MAX_DIMENSION: usize = 65535;
 
 /// メモリ確保の失敗は unwind せずプロセスごと止まるので、確保の前に断る
@@ -38,21 +39,46 @@ pub struct FileReport {
     pub warnings: Vec<Warning>,
 }
 
+/// 8 ビット RGB
+// グレースケールも RGB に広げる
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RgbImage {
+    pub width: u32,
+    pub height: u32,
+    pub pixels: Vec<u8>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Preview {
+    /// 縮小と回転を済ませた、エンコード前の画像
+    pub reference: RgbImage,
+    /// 出力する JPEG を読み直した画像
+    pub output: RgbImage,
+    pub input_bytes: u64,
+    pub output_bytes: u64,
+    pub warnings: Vec<Warning>,
+}
+
 struct Converted {
     jpeg: Vec<u8>,
     warnings: Vec<Warning>,
+    pixels: Vec<u8>,
+    width: u32,
+    height: u32,
+    format: PixelFormat,
 }
 
 pub fn process_file(input: &Path, output: &Path, s: &Settings) -> Result<FileReport, ProcessError> {
     s.validate()?;
     let data = fs::read(input).map_err(ProcessError::Read)?;
     let input_bytes = data.len() as u64;
-    let converted = convert(Bytes::from(data), s, &MozjpegEncoder)?;
-    write_atomically(output, &converted.jpeg).map_err(ProcessError::Write)?;
+    // 書き込み中に縮小後の画素を持ち続けないよう、ここで捨てる
+    let Converted { jpeg, warnings, .. } = convert(Bytes::from(data), s, &MozjpegEncoder)?;
+    write_atomically(output, &jpeg).map_err(ProcessError::Write)?;
     Ok(FileReport {
         input_bytes,
-        output_bytes: converted.jpeg.len() as u64,
-        warnings: converted.warnings,
+        output_bytes: jpeg.len() as u64,
+        warnings,
     })
 }
 
@@ -60,6 +86,47 @@ pub fn process_to_memory(input: &Path, s: &Settings) -> Result<Vec<u8>, ProcessE
     s.validate()?;
     let data = fs::read(input).map_err(ProcessError::Read)?;
     Ok(convert(Bytes::from(data), s, &MozjpegEncoder)?.jpeg)
+}
+
+pub fn preview(input: &Path, s: &Settings) -> Result<Preview, ProcessError> {
+    s.validate()?;
+    let data = fs::read(input).map_err(ProcessError::Read)?;
+    let input_bytes = data.len() as u64;
+    let converted = convert(Bytes::from(data), s, &MozjpegEncoder)?;
+    let reference = to_rgb(
+        converted.pixels,
+        converted.width,
+        converted.height,
+        converted.format,
+    );
+    let output_bytes = converted.jpeg.len() as u64;
+    let decoded = decode(&converted.jpeg)?;
+    drop(converted.jpeg);
+    let output = to_rgb(
+        decoded.pixels,
+        decoded.width,
+        decoded.height,
+        decoded.format,
+    );
+    Ok(Preview {
+        reference,
+        output,
+        input_bytes,
+        output_bytes,
+        warnings: converted.warnings,
+    })
+}
+
+fn to_rgb(pixels: Vec<u8>, width: u32, height: u32, format: PixelFormat) -> RgbImage {
+    let pixels = match format {
+        PixelFormat::Rgb => pixels,
+        PixelFormat::Gray => pixels.iter().flat_map(|&v| [v, v, v]).collect(),
+    };
+    RgbImage {
+        width,
+        height,
+        pixels,
+    }
 }
 
 fn convert(input: Bytes, s: &Settings, encoder: &impl Encoder) -> Result<Converted, ProcessError> {
@@ -117,7 +184,14 @@ fn convert(input: Bytes, s: &Settings, encoder: &impl Encoder) -> Result<Convert
         icc: extracted.icc.as_deref(),
     };
     let jpeg = encoder.encode(&frame, s.quality, &segments)?;
-    Ok(Converted { jpeg, warnings })
+    Ok(Converted {
+        jpeg,
+        warnings,
+        pixels,
+        width: out_width,
+        height: out_height,
+        format: decoded.format,
+    })
 }
 
 struct Decoded {

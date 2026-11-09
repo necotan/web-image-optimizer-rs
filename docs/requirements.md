@@ -91,7 +91,7 @@ Quality and long edge can be overridden individually. When overridden, the displ
 | G-08 | Restore the last preset, quality, long edge, concurrency, display language, and window size on the next launch. |
 | G-09 | Display Japanese correctly. |
 | G-10 | On Windows, do not show a console window when the GUI starts. |
-| G-11 | **(Phase 3)** For one file selected in the list, show the result converted with the current settings next to the original. Support a 100% crop view, and show the estimated output size. |
+| G-11 | **(Phase 3)** For one file selected in the list, open a separate preview window from a button that shows the image before encoding and the result converted with the current settings next to each other. Support a 100% crop view, and show the estimated output size. |
 
 ### 4.4 Command Line
 
@@ -114,7 +114,7 @@ The tool has no user-facing command line; the GUI is the only interface. `core` 
 | N-01 | Supported OS | Windows 10/11 (x64) is primary. Keep the project buildable on macOS and Linux (running there is optional). |
 | N-02 | Distribution | A single executable with no additional runtime or DLL. |
 | N-03 | Distribution size | GUI release build **15MB or less** (Japanese fonts are not bundled; OS fonts are loaded). |
-| N-04 | Runtime memory | Idle: private memory stays within **30MB** of a minimal eframe app (same eframe features, one label) on the same PC. For reference, the development PC shows about 150MB working set and 106MB private, most of it eframe and the GPU driver. Peak during processing: the increase over idle stays within **2 ×** concurrency × one decoded image (width × height × 3 bytes). |
+| N-04 | Runtime memory | Idle: private memory stays within **30MB** of a minimal eframe app (same eframe features, one label) on the same PC. For reference, the development PC shows about 150MB working set and 106MB private, most of it eframe and the GPU driver. Peak during processing: the increase over idle stays within **2 ×** concurrency × one decoded image (width × height × 3 bytes). While the preview window (G-11) is open, add the display textures, about **4 ×** the two output images in RGBA (2 × width × height × 4 bytes), because the GPU driver keeps freed texture memory for reuse. |
 | N-05 | Speed | Faster than the old version (sequential) on the same PC with the same photos. |
 | N-06 | Quality and compression | At the same quality value, output size stays within about **±15%** of the old version. Quality scales differ between encoders, so tune by measurement. |
 | N-07 | Responsiveness | The GUI does not freeze during conversion (processing runs on a worker thread). |

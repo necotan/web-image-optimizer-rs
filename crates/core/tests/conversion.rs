@@ -5,8 +5,8 @@ use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 
 use mozjpeg::{ColorSpace as MozColorSpace, Compress};
 use wio_core::{
-    BatchEvent, BatchSummary, Preset, ProcessError, Settings, SettingsError, Warning, process_file,
-    process_to_memory, run_batch,
+    BatchEvent, BatchSummary, Preset, ProcessError, Settings, SettingsError, Warning, preview,
+    process_file, process_to_memory, run_batch,
 };
 use zune_jpeg::JpegDecoder;
 use zune_jpeg::zune_core::bytestream::ZCursor;
@@ -449,6 +449,76 @@ fn memory_result_matches_the_written_file() {
     let written = convert(&dir, "a.jpg", &source);
     let memory = process_to_memory(&dir.0.join("a.jpg"), &SETTINGS).unwrap();
     assert_eq!(written, memory);
+}
+
+#[test]
+fn preview_matches_the_written_file() {
+    let dir = TempDir::new();
+    let source = with_segments(&two_color_jpeg(64, 32), &[exif_segment(&tiff_with_gps(6))]);
+    let written = convert(&dir, "a.jpg", &source);
+    let result = preview(&dir.0.join("a.jpg"), &SETTINGS).unwrap();
+
+    assert_eq!(result.input_bytes, source.len() as u64);
+    assert_eq!(result.output_bytes, written.len() as u64);
+    assert!(result.warnings.is_empty());
+
+    let (pixels, w, h) = decode_rgb(&written);
+    assert_eq!(
+        (result.output.width, result.output.height),
+        (w as u32, h as u32)
+    );
+    assert_eq!(result.output.pixels, pixels);
+    // 回転後の寸法で返す
+    assert_eq!((result.reference.width, result.reference.height), (32, 64));
+    assert_eq!(result.reference.pixels.len(), 32 * 64 * 3);
+}
+
+#[test]
+fn preview_reference_is_the_image_before_encoding() {
+    let dir = TempDir::new();
+    let input = dir.write("a.jpg", &two_color_jpeg(64, 32));
+    let low = Settings {
+        long_edge: 2400,
+        quality: 5,
+    };
+    let result = preview(&input, &low).unwrap();
+    let total_diff: u64 = result
+        .reference
+        .pixels
+        .iter()
+        .zip(&result.output.pixels)
+        .map(|(a, b)| u64::from(a.abs_diff(*b)))
+        .sum();
+    // quality 5 なら劣化が出るので、reference が出力そのものではないことを確かめられる
+    assert!(total_diff > 0);
+    let left = &result.reference.pixels[(16 * 64 + 8) * 3..][..3];
+    assert!(left[0] > 150 && left[2] < 100, "left is {left:?}");
+}
+
+#[test]
+fn preview_expands_grayscale_to_rgb() {
+    let dir = TempDir::new();
+    let pixels = vec![128u8; 64 * 32];
+    let input = dir.write(
+        "a.jpg",
+        &encode(MozColorSpace::JCS_GRAYSCALE, 1, 64, 32, &pixels),
+    );
+    let result = preview(&input, &SETTINGS).unwrap();
+    for image in [&result.reference, &result.output] {
+        assert_eq!(image.pixels.len(), 64 * 32 * 3);
+        assert!(image.pixels.chunks(3).all(|p| p[0] == p[1] && p[1] == p[2]));
+    }
+}
+
+#[test]
+fn preview_reports_errors_without_writing() {
+    let dir = TempDir::new();
+    let input = dir.write("a.jpg", b"not a jpeg");
+    assert!(matches!(
+        preview(&input, &SETTINGS),
+        Err(ProcessError::Decode(_))
+    ));
+    assert!(dir.export_names().is_empty());
 }
 
 #[test]

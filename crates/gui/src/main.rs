@@ -5,6 +5,7 @@ use eframe::egui;
 mod app;
 mod fonts;
 mod i18n;
+mod preview;
 
 /// 設定の保存先フォルダ名にもなるので変えない
 const APP_ID: &str = "web-image-optimizer-rs";

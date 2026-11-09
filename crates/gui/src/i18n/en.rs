@@ -39,6 +39,21 @@ pub static STRINGS: Strings = Strings {
     failed_files: "Failed files",
     warned_files: "Files with warnings",
 
+    preview_open: "Preview",
+    preview_open_hint: "Select a file in the list (or double-click a row)",
+    preview_title: "Preview",
+    preview_hint: "Select a file in the list to compare it before and after conversion here",
+    preview_paused: "Updates after the conversion finishes",
+    preview_unavailable: "Could not start the preview",
+    preview_before: "Before (resized only)",
+    preview_after: "After",
+    zoom_fit: "Fit",
+    zoom_actual: "100%",
+    preview_estimate: |output, input, change| {
+        format!("Estimated output: {output} (from {input}, {change:+.1}%)")
+    },
+    preview_too_large: |max| format!("Too large to display (GPU limit {max}px)"),
+
     warning_exif_removed: "EXIF could not be read, so the output has no EXIF",
     warning_metadata_unreadable: "Metadata could not be read, so the output has no EXIF or color profile",
 

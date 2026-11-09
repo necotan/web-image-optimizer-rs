@@ -33,6 +33,10 @@ web-image-optimizer-rs/
 │   │       └── error.rs
 │   └── gui/                # package: wio-gui (executable: wio-gui)
 │       └── src/
+│           ├── main.rs
+│           ├── app.rs          # screen, batch worker
+│           ├── preview.rs      # preview worker and window (phase 3)
+│           ├── fonts.rs        # Japanese font loading
 │           └── i18n/
 │               ├── mod.rs      # Lang, Strings, OS language detection
 │               ├── ja.rs       # Japanese text
@@ -105,6 +109,24 @@ pub fn process_file(input: &Path, output: &Path, s: &Settings) -> Result<FileRep
 
 /// Converts in memory and returns the encoded bytes
 pub fn process_to_memory(input: &Path, s: &Settings) -> Result<Vec<u8>, ProcessError>;
+
+/// Converts in memory and returns both images for display (phase 3)
+pub fn preview(input: &Path, s: &Settings) -> Result<Preview, ProcessError>;
+
+pub struct Preview {
+    pub reference: RgbImage,  // resized and rotated, before encoding
+    pub output: RgbImage,     // the encoded JPEG decoded again
+    pub input_bytes: u64,
+    pub output_bytes: u64,    // equals the size process_file writes
+    pub warnings: Vec<Warning>,
+}
+
+/// 8-bit RGB, rows top to bottom; grayscale is expanded to RGB
+pub struct RgbImage {
+    pub width: u32,
+    pub height: u32,
+    pub pixels: Vec<u8>,
+}
 
 pub struct FileReport {
     pub input_bytes: u64,
@@ -231,7 +253,7 @@ The window is a single screen with four areas, from top to bottom. Labels below 
 3. **File list**: a table with the columns `File name`, `Original size`, `Output size`, and `Status`. `Output size` shows `-` until the file is done. `Status` shows `Waiting`, `Processing...`, `✓ Done`, `⚠ Done (warning)`, `✗ Failed`, or `Cancelled`. Hovering a warning or failure shows the reason.
 4. **Progress and actions**: a progress bar with the processed and total counts (e.g. `12 / 42`), with the `Start` button, or the `Cancel` button while running, to its right. Below them, on completion, the summary (e.g. `Done: 42 files / 980MB -> 71MB / 18.3s  0 failed`) and an `Open output folder` button. Files that failed or had warnings are listed below the summary with their reasons.
 
-- Phase 3 adds a preview panel to the right of or below the file list (§7.5).
+- Phase 3 adds a `Preview` button to the left of `Start` and opens the preview in a separate window (§7.5).
 - The file list uses `egui_extras::TableBuilder` and draws only the visible rows.
 
 ### 7.2 State
@@ -247,6 +269,8 @@ struct App {
     jobs: usize,
     running: Option<Running>,     // receiver, cancel flag, start time
     finished: Option<Finished>,   // BatchSummary, elapsed time, cancelled
+    selected: Option<usize>,      // row shown in the preview
+    preview: PreviewWindow,       // open flag, preview thread, textures, zoom (§7.5)
     // Persist only settings / jobs / lang
 }
 ```
@@ -274,11 +298,15 @@ struct App {
 
 ### 7.5 Preview (Phase 3)
 
-- For the one file selected in the list, run `wio_core::process_to_memory` on a worker thread, then decode the resulting JPEG for display.
-- Show the original and the converted image side by side, **cropping the same position at 100%**. A 100% view shows degradation better than a scaled-down one.
-- Keep display textures for the one image on screen only. Discard the previous texture when another file is selected.
-- Regenerate 300ms after quality or long edge changes, to avoid recalculating continuously while the slider moves.
-- Show the estimated output size.
+- Clicking a row in the file list selects it. The `Preview` button, enabled while a row is selected, or a double-click on a row opens the preview in a separate window (an egui immediate viewport, 1200×800 at first). The main window keeps the phase 2 layout, and the preview window can be resized or maximized on its own. While it is open, selecting another row or changing the settings updates it. The close button or Esc closes it. With no row selected, it shows a hint to select a file.
+- An earlier version placed the preview inside the main window, on the right or below the list. It was dropped: the panes were too small for a 100% view, and a small window made the preview overlap the list.
+- For the selected file, run `wio_core::preview` on a dedicated preview thread. It returns the image before encoding (resized and rotated) and the encoded JPEG decoded again, both at the output size. Comparing these two shows only the JPEG compression loss. The original file's pixels are not used: at a different scale, the same 100% view would cover a different area.
+- Show the two images, before first and after second, side by side or stacked, whichever shows the image larger in the window. `Fit` shows the whole image; `100%` maps one image pixel to one screen pixel. In `100%`, dragging either image moves both to the same position. Clicking an image in `Fit` switches to `100%` centered on that point.
+- Show the estimated output size, which is the exact size `process_file` would write, with the change from the original size and the output dimensions.
+- The preview thread runs one request at a time. When a request finishes, it takes only the newest waiting request and drops the older ones. Results for an outdated request are discarded. This keeps memory at one conversion (N-04).
+- Selecting another file starts a new request at once. Changing quality or long edge starts one 300ms after the last change, to avoid recalculating continuously while the slider moves.
+- During a batch, no new request is sent; the window keeps the last result and says it will update after the batch. A request already running when the batch starts finishes.
+- The preview thread also splits each image into 512×512 `ColorImage` tiles, padding the edge tiles, so the UI thread only uploads them. All textures have the same size because the GPU driver keeps freed texture memory per size: one texture per photo grew memory with every photo of a different size, while same-size tiles are reused (§11). When a request is sent, the textures on screen are released, and until the result arrives each pane shows a skeleton: a pulsing rectangle at the image's position and size, with the previous image's aspect ratio when the file changed. The size estimate line stays. Holding two sets of textures cost about 80MB more (§11). A result is loaded in the frame after it arrives. Textures use no mipmaps: they smooth the `Fit` view but cost about 30MB more. Closing the window drops all textures and results. An image larger than the GPU's maximum texture size is not shown, because it would use too much memory; the window says so and still shows the size estimate.
 
 ## 8. Error Handling
 
@@ -348,6 +376,11 @@ Append decisions and measurement results made during implementation.
 | 2026-11-08 | GUI release build: 10.4MB (N-03), Windows GUI subsystem (G-10), imports only OS DLLs. Idle memory on this PC (Intel GPU): working set 146MB, private 106MB, above the 50MB target of N-04. A minimal eframe 0.37 glow app with nothing but a label uses 127 to 133MB working set and 92MB private; the Intel OpenGL driver DLLs alone map 84MB. The Japanese font adds about 13MB private, and the rest of this app about 6MB. |
 | 2026-11-08 | Peak memory on the same photos (up to 40 megapixels): 181MB at 1 job, 563MB at 4 jobs. With 24-megapixel files: 113MB and 383MB. This is above the 300MB estimate in §5 and about 1.2 times concurrency × one decoded image (N-04). |
 | 2026-11-08 | Spec change: N-04 no longer sets an absolute idle target. eframe with glow loads the GPU driver at startup, so 50MB cannot be met, and the absolute value depends on the GPU and driver. Idle is now compared with a minimal eframe app on the same PC (this app: +14MB private). The peak bound is 2 × concurrency × one decoded image, because the measured ratio is 1.2 at 4 jobs and up to 1.6 at 1 job. |
+| 2026-11-09 | Spec change: the preview opens in a separate window from a `Preview` button or a row double-click (G-11, §7.5). A first version placed it inside the main window, on the right or below the list; the panes were too small for a 100% view, and a small window made the preview overlap the list. |
+| 2026-11-09 | Preview memory on the ZN6 photos (3200 px long edge, so two 3200×2133 textures), private bytes: idle 105 to 106MB. Holding the old textures while generating: about 249MB with an image shown, 496MB at peak. Releasing them when a request is sent did not lower the measured peak (590MB), which led to the texture experiment below. Closing the preview window returned to 109 to 116MB. |
+| 2026-11-09 | Texture experiment: a minimal eframe 0.37 glow app loads two 3200×2133 RGBA textures (55MB) once a second, 40 times, on the Intel GPU of this PC (minimal app idle: 92MB private). Loading the new pair before releasing the old one: 304MB floor, 377MB peak. Releasing first: 224MB floor, 296MB peak. Releasing first without mipmaps: 196MB floor, 268MB peak. After all textures are released the value stays at the floor: the driver keeps the memory and reuses it, so it does not grow across cycles. Shown textures cost about 2.4 times their RGBA size. This led to adding the texture term to N-04. |
+| 2026-11-09 | Same experiment at 300ms intervals, without mipmaps, releasing first. Fixed 3200×2133: 197 to 270MB. Reusing the same two textures with `TextureHandle::set`: 302 to 376MB. Sizes changing every cycle as in ZN6 (3200×2133, 3200×2128, 2133×3200, 2560×3200): 535 to 672MB, 469MB after release. Fixed 3200×3200 textures updated with `set_partial`: 391 to 556MB. The same changing sizes split into 512×512 tiles: 239 to 329MB, peak 341MB; 256×256 tiles: 246 to 345MB. `wio_core::preview` alone, 78 calls on the ZN6 copies: 198MB peak, back to 2MB after each call. |
+| 2026-11-09 | Decision: upload preview images as 512×512 tiles. The GUI, driven through the same file and quality changes 59 times at 700ms intervals on the ZN6 copies: one texture per image peaked at 681MB with a floor that climbed to 368MB; tiles peaked at 498MB (392MB over idle) with a floor of 252 to 311MB, falling after the window closed. The N-04 bound for this case is 2 × 119MB + 4 × 55MB = 458MB over idle. |
 
 ## 12. Open Questions
 

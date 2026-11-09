@@ -16,8 +16,10 @@ use wio_core::{
 
 use crate::fonts;
 use crate::i18n::{self, Lang, Strings};
+use crate::preview::{PreviewKey, PreviewWindow};
 
-/// 同時処理数の上限。これ以上はメモリが増えるだけで速くならない
+/// 同時処理数の上限
+// これ以上はメモリが増えるだけで速くならない
 const MAX_JOBS: usize = 16;
 
 #[derive(Serialize, Deserialize)]
@@ -73,6 +75,8 @@ pub struct App {
     running: Option<Running>,
     finished: Option<Finished>,
     start_failed: bool,
+    selected: Option<usize>,
+    preview: PreviewWindow,
 }
 
 impl App {
@@ -93,6 +97,8 @@ impl App {
             running: None,
             finished: None,
             start_failed: false,
+            selected: None,
+            preview: PreviewWindow::default(),
         };
         if let Some(saved) = saved {
             let settings = Settings {
@@ -129,6 +135,7 @@ impl App {
 
     fn set_folder(&mut self, dir: PathBuf) {
         self.finished = None;
+        self.selected = None;
         self.start_failed = false;
         match scan_dir(&dir) {
             Ok(files) => {
@@ -343,10 +350,21 @@ impl App {
         });
     }
 
-    fn table_ui(&self, ui: &mut egui::Ui, s: &Strings, lang: Lang) {
+    fn preview_key(&self) -> Option<PreviewKey> {
+        let row = self.rows.get(self.selected?)?;
+        Some(PreviewKey {
+            path: row.path.clone(),
+            settings: self.settings,
+        })
+    }
+
+    fn table_ui(&mut self, ui: &mut egui::Ui, s: &Strings, lang: Lang) {
         let row_height = ui.text_style_height(&egui::TextStyle::Body) + 4.0;
+        let mut clicked = None;
+        let mut open_preview = false;
         TableBuilder::new(ui)
             .striped(true)
+            .sense(egui::Sense::click())
             .column(Column::remainder().at_least(160.0).clip(true))
             .column(Column::exact(96.0))
             .column(Column::exact(96.0))
@@ -365,7 +383,9 @@ impl App {
             })
             .body(|body| {
                 body.rows(row_height, self.rows.len(), |mut row| {
-                    let file = &self.rows[row.index()];
+                    let index = row.index();
+                    let file = &self.rows[index];
+                    row.set_selected(self.selected == Some(index));
                     row.col(|ui| {
                         ui.label(&file.name);
                     });
@@ -381,8 +401,22 @@ impl App {
                     row.col(|ui| {
                         status_ui(ui, s, lang, &file.status);
                     });
+                    let response = row.response();
+                    if response.clicked() {
+                        clicked = Some(index);
+                    }
+                    if response.double_clicked() {
+                        clicked = Some(index);
+                        open_preview = true;
+                    }
                 });
             });
+        if clicked.is_some() {
+            self.selected = clicked;
+        }
+        if open_preview {
+            self.preview.open();
+        }
     }
 
     fn progress_ui(&mut self, ui: &mut egui::Ui, s: &Strings, lang: Lang) {
@@ -420,6 +454,13 @@ impl App {
                             self.start(ui.ctx());
                         }
                     }
+                }
+                if ui
+                    .add_enabled(self.selected.is_some(), egui::Button::new(s.preview_open))
+                    .on_disabled_hover_text(s.preview_open_hint)
+                    .clicked()
+                {
+                    self.preview.open();
                 }
                 ui.add(
                     egui::ProgressBar::new(fraction)
@@ -510,9 +551,12 @@ impl eframe::App for App {
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         self.poll_worker();
         self.handle_dropped_files(ui.ctx());
+        let key = self.preview_key();
+        self.preview.update(ui.ctx(), key, self.is_running());
 
         let lang = self.display_lang();
         let s = lang.strings();
+        let paused = self.is_running();
 
         egui::Panel::top("input").show(ui, |ui| {
             ui.add_space(6.0);
@@ -530,6 +574,12 @@ impl eframe::App for App {
         egui::CentralPanel::default().show(ui, |ui| {
             self.table_ui(ui, s, lang);
         });
+
+        let file_name = self
+            .selected
+            .and_then(|i| self.rows.get(i))
+            .map(|row| row.name.as_str());
+        self.preview.show(ui.ctx(), s, lang, paused, file_name);
     }
 
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
@@ -594,7 +644,7 @@ fn status_ui(ui: &mut egui::Ui, s: &Strings, lang: Lang, status: &RowStatus) {
     }
 }
 
-fn format_bytes(bytes: u64) -> String {
+pub(crate) fn format_bytes(bytes: u64) -> String {
     if bytes < 1024 * 1024 {
         format!("{:.0}KB", bytes as f64 / 1024.0)
     } else {
