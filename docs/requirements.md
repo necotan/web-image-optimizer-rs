@@ -139,4 +139,4 @@ The tool has no user-facing command line; the GUI is the only interface. `core` 
 | 1 | Implement `core` with the old version's conversion features, and a development example that runs it | The example and tests meet the conversion criteria in §6. Output size and processing time are compared with the old version and recorded. |
 | 2 | Implement `gui` (egui) | G-01 to G-10 and §4.5 are met. All acceptance criteria are met through the GUI. |
 | 3 | Add the preview feature | G-11 is met. Memory stays within N-04 during preview. |
-| 4 | Prepare distribution | GitHub Actions builds the Windows binary and attaches it to Releases. The README is complete and states at the top that this is the successor to the old version, with a link. The old version's README points to this repository, and the old version is archived. |
+| 4 | Prepare distribution | GitHub Actions builds the Windows binary and attaches it to Releases. The README is complete and states at the top that this is the successor to the old version, with a link. The old version is not archived. |

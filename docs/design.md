@@ -246,15 +246,16 @@ read -> extract metadata -> decode -> correct orientation -> resize -> encode
 
 ### 7.1 Screen Layout
 
-The window is a single screen with four areas, from top to bottom. Labels below are the English text. A language selector sits in the top-right corner, above the Input area.
+The window is a single screen with four areas, from top to bottom. Labels below are the English text. A language selector, `日本語` and `English` with no label, sits at the top left, above the Input area.
 
-1. **Input**: a drop area labeled `Drop a folder here`, with a `Select folder...` button to its right. Below them, the selected folder path and the number of JPEGs (e.g. `C:\Photos\2026-08-04 (42 JPEGs)`).
+1. **Input**: a drop area with a `Select folder` button to its right. The drop area shows `Drop a folder to select it` until a folder is set, then the folder path (e.g. `C:\Photos\2026-08-04`), shortened if it does not fit. Below them, only a folder error or `No JPEG files found` is shown.
 2. **Settings**: radio buttons for the presets `low`, `default`, and `high`, followed by a `Custom` marker shown when the values match no preset. Below them, a quality slider with its value, then a number input for the long edge in px, labeled `Long edge`, and a number input labeled `Concurrent files`.
-3. **File list**: a table with the columns `File name`, `Original size`, `Output size`, and `Status`. `Output size` shows `-` until the file is done. `Status` shows `Waiting`, `Processing...`, `✓ Done`, `⚠ Done (warning)`, `✗ Failed`, or `Cancelled`. Hovering a warning or failure shows the reason.
-4. **Progress and actions**: a progress bar with the processed and total counts (e.g. `12 / 42`), with the `Start` button, or the `Cancel` button while running, to its right. Below them, on completion, the summary (e.g. `Done: 42 files / 980MB -> 71MB / 18.3s  0 failed`) and an `Open output folder` button. Files that failed or had warnings are listed below the summary with their reasons.
+3. **File list**: a table with the columns `File name`, `Original size`, `Output size`, and `Status`. `Output size` is empty until the file is done. `Status` shows `Waiting`, `Processing...`, `✓ Done`, `⚠ Done (warning)`, `✗ Failed`, or `Cancelled`. Hovering a warning or failure shows the reason.
+4. **Progress and actions**: a progress bar with the processed and total counts (e.g. `12 / 42`), with the `Start` button, or the `Cancel` button while running, to its right. Below them, on completion, the summary (e.g. `Done: 42 files / 980MB -> 71MB / 18.3s  0 failed`) and an `Open output folder` link. Files that failed or had warnings are listed below the summary with their reasons.
 
 - Phase 3 adds a `Preview` button to the left of `Start` and opens the preview in a separate window (§7.5).
 - The file list uses `egui_extras::TableBuilder` and draws only the visible rows.
+- The progress bar fill is transparent while the count is 0, because egui draws a fill as wide as the bar is tall even at 0.
 
 ### 7.2 State
 
@@ -302,11 +303,11 @@ struct App {
 - An earlier version placed the preview inside the main window, on the right or below the list. It was dropped: the panes were too small for a 100% view, and a small window made the preview overlap the list.
 - For the selected file, run `wio_core::preview` on a dedicated preview thread. It returns the image before encoding (resized and rotated) and the encoded JPEG decoded again, both at the output size. Comparing these two shows only the JPEG compression loss. The original file's pixels are not used: at a different scale, the same 100% view would cover a different area.
 - Show the two images, before first and after second, side by side or stacked, whichever shows the image larger in the window. `Fit` shows the whole image; `100%` maps one image pixel to one screen pixel. In `100%`, dragging either image moves both to the same position. Clicking an image in `Fit` switches to `100%` centered on that point.
-- Show the estimated output size, which is the exact size `process_file` would write, with the change from the original size and the output dimensions.
+- Show the original size and the output size, in the same `before -> after` form as the batch summary (e.g. `File size: 5.6MB -> 1.1MB`). The output size is the exact size `process_file` would write.
 - The preview thread runs one request at a time. When a request finishes, it takes only the newest waiting request and drops the older ones. Results for an outdated request are discarded. This keeps memory at one conversion (N-04).
 - Selecting another file starts a new request at once. Changing quality or long edge starts one 300ms after the last change, to avoid recalculating continuously while the slider moves.
 - During a batch, no new request is sent; the window keeps the last result and says it will update after the batch. A request already running when the batch starts finishes.
-- The preview thread also splits each image into 512×512 `ColorImage` tiles, padding the edge tiles, so the UI thread only uploads them. All textures have the same size because the GPU driver keeps freed texture memory per size: one texture per photo grew memory with every photo of a different size, while same-size tiles are reused (§11). When a request is sent, the textures on screen are released, and until the result arrives each pane shows a skeleton: a pulsing rectangle at the image's position and size, with the previous image's aspect ratio when the file changed. The size estimate line stays. Holding two sets of textures cost about 80MB more (§11). A result is loaded in the frame after it arrives. Textures use no mipmaps: they smooth the `Fit` view but cost about 30MB more. Closing the window drops all textures and results. An image larger than the GPU's maximum texture size is not shown, because it would use too much memory; the window says so and still shows the size estimate.
+- The preview thread also splits each image into 512×512 `ColorImage` tiles, padding the edge tiles, so the UI thread only uploads them. All textures have the same size because the GPU driver keeps freed texture memory per size: one texture per photo grew memory with every photo of a different size, while same-size tiles are reused (§11). When a request is sent, the textures on screen are released, and until the result arrives each pane shows a skeleton: a pulsing rectangle at the image's position and size, with the previous image's aspect ratio when the file changed. The file size line stays. Holding two sets of textures cost about 80MB more (§11). A result is loaded in the frame after it arrives. Textures use no mipmaps: they smooth the `Fit` view but cost about 30MB more. Closing the window drops all textures and results. An image larger than the GPU's maximum texture size is not shown, because it would use too much memory; the window says so and still shows the file sizes.
 
 ## 8. Error Handling
 
@@ -336,6 +337,16 @@ panic = "unwind"     # mozjpeg reports errors by unwinding
 
 - `.cargo/config.toml` sets `+crt-static` for `x86_64-pc-windows-msvc`, so the executable needs no VC++ runtime (N-02).
 - Set `default-features = false` on eframe and enable only what is needed, such as `glow`, `default_fonts`, and `persistence`.
+
+### 9.1 CI and Release
+
+Both workflows run on `windows-latest` with the stable Rust toolchain and install NASM with Chocolatey, adding `C:\Program Files\NASM` to `PATH`.
+
+- `.github/workflows/ci.yml` runs on pushes to `main` and on pull requests: `cargo fmt --all --check`, `cargo clippy --workspace --all-targets -- -D warnings`, and `cargo test --workspace`.
+- `.github/workflows/release.yml` runs when a tag `v*` is pushed. It fails if the tag differs from `v` plus the workspace version, runs the tests, and builds `wio-gui` in release mode.
+- Without NASM, mozjpeg still builds and only prints a build script warning that Cargo hides for registry dependencies. The release workflow therefore checks that `target/release/build/mozjpeg-sys-*/out/include/jconfig.h` contains `#define WITH_SIMD 1`, and fails otherwise.
+- It copies the executable to `web-image-optimizer-<version>-windows-x64.exe` and creates a **draft** release with generated notes. The author publishes it after checking.
+- To release: bump `version` in the workspace `Cargo.toml`, merge, then push the tag (e.g. `git tag v0.1.0` and `git push origin v0.1.0`).
 
 ## 10. Tests
 
@@ -387,3 +398,4 @@ Append decisions and measurement results made during implementation.
 Move an item to §11 once it is decided.
 
 - **nasm in CI**: the release workflow must install nasm and fail if SIMD is off (phase 4).
+- **App icon**: the user will provide it later. Until then the window keeps eframe's default icon and the executable has none.

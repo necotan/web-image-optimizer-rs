@@ -1,0 +1,57 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup default stable
+
+      # Without NASM, mozjpeg still builds but silently loses SIMD (design §9.1)
+      - name: Install NASM
+        run: |
+          choco install nasm -y --no-progress
+          echo "C:\Program Files\NASM" >> "$GITHUB_PATH"
+
+      - name: Check that the tag matches the version
+        run: |
+          version=$(cargo pkgid -p wio-gui | sed 's/.*[#@]//')
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::tag $GITHUB_REF_NAME does not match version $version in Cargo.toml"
+            exit 1
+          fi
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+
+      - run: cargo test --workspace
+
+      - run: cargo build --release -p wio-gui
+
+      - name: Check that mozjpeg was built with SIMD
+        run: |
+          if ! grep -q "define WITH_SIMD 1" target/release/build/mozjpeg-sys-*/out/include/jconfig.h; then
+            echo "::error::mozjpeg was built without SIMD; is NASM on PATH?"
+            exit 1
+          fi
+
+      # The release is a draft, so it is published only after a manual check
+      - name: Create a draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          asset="web-image-optimizer-$VERSION-windows-x64.exe"
+          cp target/release/wio-gui.exe "$asset"
+          gh release create "$GITHUB_REF_NAME" "$asset" --draft --generate-notes --title "$GITHUB_REF_NAME"
