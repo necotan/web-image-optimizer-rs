@@ -43,11 +43,8 @@ impl Lang {
 /// 表示文字列
 // ja.rs と en.rs で 1 つずつ定義するので、片方の訳の漏れはコンパイルエラーになる
 pub struct Strings {
-    pub language: &'static str,
     pub drop_here: &'static str,
     pub select_folder: &'static str,
-    pub no_folder: &'static str,
-    pub jpeg_count: fn(usize) -> String,
     pub no_jpegs: &'static str,
     pub folder_not_found: fn(&str) -> String,
     pub folder_unreadable: fn(&str) -> String,
@@ -90,8 +87,8 @@ pub struct Strings {
     pub preview_after: &'static str,
     pub zoom_fit: &'static str,
     pub zoom_actual: &'static str,
-    /// 出力サイズ、元のサイズ、増減（%）
-    pub preview_estimate: fn(&str, &str, f64) -> String,
+    /// 元のサイズ、出力サイズ
+    pub preview_size: fn(&str, &str) -> String,
     /// GPU のテクスチャの上限（px）
     pub preview_too_large: fn(usize) -> String,
 

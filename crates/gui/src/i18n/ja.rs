@@ -1,11 +1,8 @@
 use super::Strings;
 
 pub static STRINGS: Strings = Strings {
-    language: "言語",
-    drop_here: "ここにフォルダをドロップ",
-    select_folder: "フォルダを選択...",
-    no_folder: "フォルダが選択されていません",
-    jpeg_count: |n| format!("（JPEG {n}件）"),
+    drop_here: "フォルダをドロップして指定",
+    select_folder: "フォルダを選択",
     no_jpegs: "対象の JPEG ファイルが見つかりませんでした",
     folder_not_found: |path| format!("フォルダが見つかりません: {path}"),
     folder_unreadable: |path| format!("フォルダを読み込めません: {path}"),
@@ -45,13 +42,11 @@ pub static STRINGS: Strings = Strings {
     preview_hint: "リストでファイルを選ぶと、変換前後をここに表示します",
     preview_paused: "変換が終わったら更新します",
     preview_unavailable: "プレビューを開始できませんでした",
-    preview_before: "変換前（縮小のみ）",
+    preview_before: "変換前",
     preview_after: "変換後",
     zoom_fit: "全体",
     zoom_actual: "100%",
-    preview_estimate: |output, input, change| {
-        format!("出力サイズの見込み: {output}（元 {input}、{change:+.1}%）")
-    },
+    preview_size: |input, output| format!("ファイルサイズ: {input} -> {output}"),
     preview_too_large: |max| format!("画像が大きすぎて表示できません（GPU の上限 {max}px）"),
 
     warning_exif_removed: "EXIF を読み取れなかったため、EXIF なしで出力しました",

@@ -416,8 +416,7 @@ impl PreviewWindow {
 
         ui.horizontal(|ui| {
             if let Some(shown) = shown {
-                ui.label(estimate_text(s, shown));
-                ui.weak(format!("{} × {} px", shown.width, shown.height));
+                ui.label(size_text(s, shown));
             }
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                 ui.selectable_value(zoom, Zoom::Actual, s.zoom_actual);
@@ -634,16 +633,10 @@ fn send_after(previous: Option<&PreviewKey>, next: Option<&PreviewKey>, now: Ins
     }
 }
 
-fn estimate_text(s: &Strings, shown: &Shown) -> String {
-    let change = if shown.input_bytes == 0 {
-        0.0
-    } else {
-        (shown.output_bytes as f64 / shown.input_bytes as f64 - 1.0) * 100.0
-    };
-    (s.preview_estimate)(
-        &crate::app::format_bytes(shown.output_bytes),
+fn size_text(s: &Strings, shown: &Shown) -> String {
+    (s.preview_size)(
         &crate::app::format_bytes(shown.input_bytes),
-        change,
+        &crate::app::format_bytes(shown.output_bytes),
     )
 }
 

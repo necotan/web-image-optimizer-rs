@@ -1,11 +1,8 @@
 use super::Strings;
 
 pub static STRINGS: Strings = Strings {
-    language: "Language",
-    drop_here: "Drop a folder here",
-    select_folder: "Select folder...",
-    no_folder: "No folder selected",
-    jpeg_count: |n| format!("({n} JPEGs)"),
+    drop_here: "Drop a folder to select it",
+    select_folder: "Select folder",
     no_jpegs: "No JPEG files found",
     folder_not_found: |path| format!("Folder not found: {path}"),
     folder_unreadable: |path| format!("Cannot read folder: {path}"),
@@ -45,13 +42,11 @@ pub static STRINGS: Strings = Strings {
     preview_hint: "Select a file in the list to compare it before and after conversion here",
     preview_paused: "Updates after the conversion finishes",
     preview_unavailable: "Could not start the preview",
-    preview_before: "Before (resized only)",
+    preview_before: "Before",
     preview_after: "After",
     zoom_fit: "Fit",
     zoom_actual: "100%",
-    preview_estimate: |output, input, change| {
-        format!("Estimated output: {output} (from {input}, {change:+.1}%)")
-    },
+    preview_size: |input, output| format!("File size: {input} -> {output}"),
     preview_too_large: |max| format!("Too large to display (GPU limit {max}px)"),
 
     warning_exif_removed: "EXIF could not be read, so the output has no EXIF",
