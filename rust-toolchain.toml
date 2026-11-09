@@ -1,0 +1,6 @@
+# 新しい stable で増えた clippy の警告で CI が落ちないよう、手元と CI のバージョンをそろえる。
+# 上げるときはここを書き換え、cargo clippy を通してからコミットする
+[toolchain]
+channel = "1.99.1"
+profile = "minimal"
+components = ["rustfmt", "clippy"]

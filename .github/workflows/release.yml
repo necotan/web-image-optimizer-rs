@@ -14,12 +14,11 @@ jobs:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
+      # Installs the version in rust-toolchain.toml
       - name: Install Rust
-        run: |
-          rustup toolchain install stable --profile minimal
-          rustup default stable
+        run: rustup toolchain install
 
       # Without NASM, mozjpeg still builds but silently loses SIMD (design §9.1)
       - name: Install NASM

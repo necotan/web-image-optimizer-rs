@@ -340,12 +340,13 @@ panic = "unwind"     # mozjpeg reports errors by unwinding
 
 ### 9.1 CI and Release
 
-Both workflows run on `windows-latest` with the stable Rust toolchain and install NASM with Chocolatey, adding `C:\Program Files\NASM` to `PATH`.
+Both workflows run on `windows-latest`, install the Rust version pinned in `rust-toolchain.toml`, and install NASM with Chocolatey, adding `C:\Program Files\NASM` to `PATH`.
 
 - `.github/workflows/ci.yml` runs on pushes to `main` and on pull requests: `cargo fmt --all --check`, `cargo clippy --workspace --all-targets -- -D warnings`, and `cargo test --workspace`.
 - `.github/workflows/release.yml` runs when a tag `v*` is pushed. It fails if the tag differs from `v` plus the workspace version, runs the tests, and builds `wio-gui` in release mode.
 - Without NASM, mozjpeg still builds and only prints a build script warning that Cargo hides for registry dependencies. The release workflow therefore checks that `target/release/build/mozjpeg-sys-*/out/include/jconfig.h` contains `#define WITH_SIMD 1`, and fails otherwise.
 - It copies the executable to `web-image-optimizer-<version>-windows-x64.exe` and creates a **draft** release with generated notes. The author publishes it after checking.
+- The Rust version is pinned so that lints added in a new stable release do not break CI unannounced. To upgrade, change `rust-toolchain.toml` and make `cargo clippy` pass in the same change.
 - To release: bump `version` in the workspace `Cargo.toml`, merge, then push the tag (e.g. `git tag v0.1.0` and `git push origin v0.1.0`).
 
 ## 10. Tests
@@ -391,6 +392,7 @@ Append decisions and measurement results made during implementation.
 | 2026-11-09 | Preview memory on the ZN6 photos (3200 px long edge, so two 3200×2133 textures), private bytes: idle 105 to 106MB. Holding the old textures while generating: about 249MB with an image shown, 496MB at peak. Releasing them when a request is sent did not lower the measured peak (590MB), which led to the texture experiment below. Closing the preview window returned to 109 to 116MB. |
 | 2026-11-09 | Texture experiment: a minimal eframe 0.37 glow app loads two 3200×2133 RGBA textures (55MB) once a second, 40 times, on the Intel GPU of this PC (minimal app idle: 92MB private). Loading the new pair before releasing the old one: 304MB floor, 377MB peak. Releasing first: 224MB floor, 296MB peak. Releasing first without mipmaps: 196MB floor, 268MB peak. After all textures are released the value stays at the floor: the driver keeps the memory and reuses it, so it does not grow across cycles. Shown textures cost about 2.4 times their RGBA size. This led to adding the texture term to N-04. |
 | 2026-11-09 | Same experiment at 300ms intervals, without mipmaps, releasing first. Fixed 3200×2133: 197 to 270MB. Reusing the same two textures with `TextureHandle::set`: 302 to 376MB. Sizes changing every cycle as in ZN6 (3200×2133, 3200×2128, 2133×3200, 2560×3200): 535 to 672MB, 469MB after release. Fixed 3200×3200 textures updated with `set_partial`: 391 to 556MB. The same changing sizes split into 512×512 tiles: 239 to 329MB, peak 341MB; 256×256 tiles: 246 to 345MB. `wio_core::preview` alone, 78 calls on the ZN6 copies: 198MB peak, back to 2MB after each call. |
+| 2026-11-10 | The first CI run used stable 1.99.1 while development used 1.96.0, and failed on the new clippy lint `chunks_exact_to_as_chunks`. Decision: pin Rust 1.99.1 with `rust-toolchain.toml` for both. |
 | 2026-11-09 | Decision: upload preview images as 512×512 tiles. The GUI, driven through the same file and quality changes 59 times at 700ms intervals on the ZN6 copies: one texture per image peaked at 681MB with a floor that climbed to 368MB; tiles peaked at 498MB (392MB over idle) with a floor of 252 to 311MB, falling after the window closed. The N-04 bound for this case is 2 × 119MB + 4 × 55MB = 458MB over idle. |
 
 ## 12. Open Questions

@@ -81,7 +81,7 @@ The specs are the source of truth for what to build; read the relevant section b
 
 ### Coding
 
-- Rust edition 2024.
+- Rust edition 2024. The Rust version is pinned in `rust-toolchain.toml`; to upgrade, change it there and fix new clippy warnings in the same change.
 
 ### Comments
 

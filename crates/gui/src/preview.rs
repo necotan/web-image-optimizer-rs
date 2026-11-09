@@ -148,8 +148,9 @@ fn split(image: RgbImage) -> Vec<Tile<ColorImage>> {
             for y in 0..h {
                 let start = ((top + y) * width + left) * 3;
                 let row = &image.pixels[start..start + w * 3];
-                for (x, rgb) in row.chunks_exact(3).enumerate() {
-                    content.pixels[y * TILE + x] = Color32::from_rgb(rgb[0], rgb[1], rgb[2]);
+                let (pixels, _) = row.as_chunks::<3>();
+                for (x, &[r, g, b]) in pixels.iter().enumerate() {
+                    content.pixels[y * TILE + x] = Color32::from_rgb(r, g, b);
                 }
             }
             tiles.push(Tile {
