@@ -148,8 +148,9 @@ fn split(image: RgbImage) -> Vec<Tile<ColorImage>> {
             for y in 0..h {
                 let start = ((top + y) * width + left) * 3;
                 let row = &image.pixels[start..start + w * 3];
-                for (x, rgb) in row.chunks_exact(3).enumerate() {
-                    content.pixels[y * TILE + x] = Color32::from_rgb(rgb[0], rgb[1], rgb[2]);
+                let (pixels, _) = row.as_chunks::<3>();
+                for (x, &[r, g, b]) in pixels.iter().enumerate() {
+                    content.pixels[y * TILE + x] = Color32::from_rgb(r, g, b);
                 }
             }
             tiles.push(Tile {
@@ -416,8 +417,7 @@ impl PreviewWindow {
 
         ui.horizontal(|ui| {
             if let Some(shown) = shown {
-                ui.label(estimate_text(s, shown));
-                ui.weak(format!("{} × {} px", shown.width, shown.height));
+                ui.label(size_text(s, shown));
             }
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                 ui.selectable_value(zoom, Zoom::Actual, s.zoom_actual);
@@ -634,16 +634,10 @@ fn send_after(previous: Option<&PreviewKey>, next: Option<&PreviewKey>, now: Ins
     }
 }
 
-fn estimate_text(s: &Strings, shown: &Shown) -> String {
-    let change = if shown.input_bytes == 0 {
-        0.0
-    } else {
-        (shown.output_bytes as f64 / shown.input_bytes as f64 - 1.0) * 100.0
-    };
-    (s.preview_estimate)(
-        &crate::app::format_bytes(shown.output_bytes),
+fn size_text(s: &Strings, shown: &Shown) -> String {
+    (s.preview_size)(
         &crate::app::format_bytes(shown.input_bytes),
-        change,
+        &crate::app::format_bytes(shown.output_bytes),
     )
 }
 

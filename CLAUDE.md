@@ -8,6 +8,7 @@
 - Use English for variable names, function names, and file names.
 - Write `docs/` in English, including comments in sample code.
 - Write `crates/gui/src/i18n/ja.rs` values in Japanese and `crates/gui/src/i18n/en.rs` values in English.
+- Write `README.md` in English and `README.ja.md` in Japanese, and change both in the same change.
 
 ## Project
 
@@ -42,6 +43,7 @@ The specs are the source of truth for what to build; read the relevant section b
 - `crates/gui/`: package `wio-gui`, executable `wio-gui`. `src/i18n/` holds all user-facing text, in Japanese and English.
 - `crates/core/tests/`: integration tests. Test JPEGs are generated in code.
 - `docs/`: only the two specs are tracked; anything else there is git-ignored local notes.
+- `.github/workflows/`: CI and the draft release build (design §9.1).
 - File-level layout: `docs/design.md` §1.
 
 ## Rules
@@ -79,7 +81,7 @@ The specs are the source of truth for what to build; read the relevant section b
 
 ### Coding
 
-- Rust edition 2024.
+- Rust edition 2024. The Rust version is pinned in `rust-toolchain.toml`; to upgrade, change it there and fix new clippy warnings in the same change.
 
 ### Comments
 

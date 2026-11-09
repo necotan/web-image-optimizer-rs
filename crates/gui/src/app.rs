@@ -251,63 +251,71 @@ impl App {
         }
     }
 
-    fn language_ui(&mut self, ui: &mut egui::Ui, s: &Strings) {
-        // horizontal で囲まないと、右寄せのレイアウトがパネルの高さをすべて使ってしまう
+    fn language_ui(&mut self, ui: &mut egui::Ui) {
         ui.horizontal(|ui| {
-            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                for lang in Lang::ALL.into_iter().rev() {
-                    ui.selectable_value(&mut self.lang, lang, lang.native_name());
-                }
-                ui.label(s.language);
-            });
+            for lang in Lang::ALL {
+                ui.selectable_value(&mut self.lang, lang, lang.native_name());
+            }
         });
     }
 
     fn input_ui(&mut self, ui: &mut egui::Ui, s: &Strings, lang: Lang) {
         let hovering = ui.ctx().input(|i| !i.raw.hovered_files.is_empty());
         ui.add_enabled_ui(!self.is_running(), |ui| {
+            // 右端のボタンを先に置き、残りの幅をドロップ欄に使う
+            // horizontal で囲まないと、右寄せのレイアウトがパネルの高さをすべて使ってしまう
             ui.horizontal(|ui| {
-                let stroke = if hovering {
-                    ui.visuals().selection.stroke
-                } else {
-                    ui.visuals().widgets.noninteractive.bg_stroke
-                };
-                egui::Frame::group(ui.style())
-                    .stroke(stroke)
-                    .show(ui, |ui| {
-                        ui.set_min_width(ui.available_width() - 170.0);
-                        ui.add_space(8.0);
-                        ui.label(s.drop_here);
-                        ui.add_space(8.0);
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    let stroke = if hovering {
+                        ui.visuals().selection.stroke
+                    } else {
+                        ui.visuals().widgets.noninteractive.bg_stroke
+                    };
+                    let frame = egui::Frame::group(ui.style()).stroke(stroke);
+                    // 先に置くボタンはドロップ欄の高さを知らないので、同じ高さにして縦の位置をそろえる
+                    let height = ui.spacing().interact_size.y + frame.total_margin().sum().y;
+                    let button =
+                        egui::Button::new(s.select_folder).min_size(egui::vec2(0.0, height));
+                    if ui.add(button).clicked()
+                        && let Some(dir) = rfd::FileDialog::new().pick_folder()
+                    {
+                        self.set_folder(dir);
+                    }
+                    let size = egui::vec2(
+                        ui.available_width() - frame.total_margin().sum().x,
+                        ui.spacing().interact_size.y,
+                    );
+                    frame.show(ui, |ui| {
+                        ui.allocate_ui_with_layout(
+                            size,
+                            egui::Layout::left_to_right(egui::Align::Center),
+                            |ui| {
+                                ui.set_min_size(size);
+                                ui.add_space(8.0);
+                                match &self.input_dir {
+                                    Some(dir) => {
+                                        ui.add(
+                                            egui::Label::new(dir.display().to_string()).truncate(),
+                                        );
+                                    }
+                                    None => {
+                                        ui.weak(s.drop_here);
+                                    }
+                                }
+                            },
+                        );
                     });
-                if ui.button(s.select_folder).clicked()
-                    && let Some(dir) = rfd::FileDialog::new().pick_folder()
-                {
-                    self.set_folder(dir);
-                }
+                });
             });
         });
 
-        match (&self.input_dir, &self.scan_error) {
-            (_, Some(error)) => {
-                ui.colored_label(
-                    ui.visuals().error_fg_color,
-                    i18n::scan_error_text(lang, error),
-                );
-            }
-            (Some(dir), None) if self.rows.is_empty() => {
-                ui.label(format!("{}  {}", dir.display(), s.no_jpegs));
-            }
-            (Some(dir), None) => {
-                ui.label(format!(
-                    "{}  {}",
-                    dir.display(),
-                    (s.jpeg_count)(self.rows.len())
-                ));
-            }
-            (None, None) => {
-                ui.weak(s.no_folder);
-            }
+        if let Some(error) = &self.scan_error {
+            ui.colored_label(
+                ui.visuals().error_fg_color,
+                i18n::scan_error_text(lang, error),
+            );
+        } else if self.input_dir.is_some() && self.rows.is_empty() {
+            ui.label(s.no_jpegs);
         }
     }
 
@@ -393,10 +401,7 @@ impl App {
                         ui.label(format_bytes(file.input_bytes));
                     });
                     row.col(|ui| {
-                        ui.label(
-                            file.output_bytes
-                                .map_or_else(|| "-".to_string(), format_bytes),
-                        );
+                        ui.label(file.output_bytes.map_or_else(String::new, format_bytes));
                     });
                     row.col(|ui| {
                         status_ui(ui, s, lang, &file.status);
@@ -462,9 +467,16 @@ impl App {
                 {
                     self.preview.open();
                 }
+                // egui は 0 でもバーの高さ分を塗るので、0 のときは塗りを透明にする
+                let fill = if done == 0 {
+                    egui::Color32::TRANSPARENT
+                } else {
+                    ui.visuals().selection.bg_fill
+                };
                 ui.add(
                     egui::ProgressBar::new(fraction)
                         .text(format!("{done} / {total}"))
+                        .fill(fill)
                         .desired_width(ui.available_width()),
                 );
             });
@@ -490,7 +502,7 @@ impl App {
                 }
                 ui.label(text);
                 if let Some(dir) = &self.input_dir
-                    && ui.button(s.open_output).clicked()
+                    && ui.link(s.open_output).clicked()
                 {
                     open_folder(&dir.join("export"));
                 }
@@ -560,7 +572,7 @@ impl eframe::App for App {
 
         egui::Panel::top("input").show(ui, |ui| {
             ui.add_space(6.0);
-            self.language_ui(ui, s);
+            self.language_ui(ui);
             self.input_ui(ui, s, lang);
             ui.separator();
             self.settings_ui(ui, s);
