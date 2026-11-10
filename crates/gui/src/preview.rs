@@ -433,10 +433,22 @@ impl PreviewWindow {
         if let Some((key, error)) = &self.error
             && key.path == wanted.path
         {
-            ui.colored_label(
-                ui.visuals().error_fg_color,
-                i18n::process_error_text(lang, error),
+            // centered_and_justified だと文字の枠が全体に広がり、どこにマウスを乗せても詳細が出てしまうので、
+            // 文字の大きさの枠を中央に置く
+            let text = egui::RichText::new(i18n::process_error_text(lang, error)).weak();
+            let galley = egui::WidgetText::from(text.clone()).into_galley(
+                ui,
+                Some(egui::TextWrapMode::Extend),
+                f32::INFINITY,
+                egui::TextStyle::Body,
             );
+            let area = ui.available_rect_before_wrap();
+            let rect = egui::Align2::CENTER_CENTER.align_size_within_rect(galley.size(), area);
+            ui.allocate_rect(area, Sense::hover());
+            let label = ui.put(rect, egui::Label::new(text));
+            if let Some(detail) = i18n::process_error_detail(error) {
+                label.on_hover_text(detail);
+            }
             return;
         }
         let Some(shown) = shown else {

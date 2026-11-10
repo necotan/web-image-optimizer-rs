@@ -114,22 +114,34 @@ pub fn warning_text(lang: Lang, warning: Warning) -> &'static str {
     }
 }
 
-/// ライブラリや OS から来る詳細は訳さず、訳した理由の後ろに付ける
 pub fn process_error_text(lang: Lang, error: &ProcessError) -> String {
     let s = lang.strings();
     match error {
         ProcessError::Settings(_) => s.error_settings.to_string(),
-        ProcessError::Read(e) => format!("{}: {e}", s.error_read),
-        ProcessError::Decode(detail) => format!("{}: {detail}", s.error_decode),
-        ProcessError::UnsupportedColorSpace(space) => {
-            format!("{}: {space}", s.error_unsupported_color_space)
-        }
+        ProcessError::Read(_) => s.error_read.to_string(),
+        ProcessError::Decode(_) => s.error_decode.to_string(),
+        ProcessError::UnsupportedColorSpace(_) => s.error_unsupported_color_space.to_string(),
         ProcessError::ImageTooLarge { width, height } => (s.error_too_large)(*width, *height),
-        ProcessError::Resize(detail) => format!("{}: {detail}", s.error_resize),
-        ProcessError::Encode(detail) => format!("{}: {detail}", s.error_encode),
-        ProcessError::Write(e) => format!("{}: {e}", s.error_write),
-        ProcessError::Panic(detail) => format!("{}: {detail}", s.error_internal),
+        ProcessError::Resize(_) => s.error_resize.to_string(),
+        ProcessError::Encode(_) => s.error_encode.to_string(),
+        ProcessError::Write(_) => s.error_write.to_string(),
+        ProcessError::Panic(_) => s.error_internal.to_string(),
     }
+}
+
+/// ライブラリや OS から来る詳細
+/// 訳せないので画面には出さず、マウスを乗せたときだけ出す
+pub fn process_error_detail(error: &ProcessError) -> Option<String> {
+    let detail = match error {
+        ProcessError::Settings(_) | ProcessError::ImageTooLarge { .. } => return None,
+        ProcessError::Read(e) | ProcessError::Write(e) => e.to_string(),
+        ProcessError::Decode(detail)
+        | ProcessError::UnsupportedColorSpace(detail)
+        | ProcessError::Resize(detail)
+        | ProcessError::Encode(detail)
+        | ProcessError::Panic(detail) => detail.clone(),
+    };
+    (!detail.is_empty()).then_some(detail)
 }
 
 pub fn scan_error_text(lang: Lang, error: &ScanError) -> String {
@@ -155,15 +167,23 @@ mod tests {
     }
 
     #[test]
-    fn error_text_keeps_details() {
+    fn error_text_leaves_untranslated_details_out() {
         let error = ProcessError::Decode("Exhausted data".to_string());
         for lang in Lang::ALL {
             let text = process_error_text(lang, &error);
-            assert!(text.ends_with(": Exhausted data"), "{text}");
+            assert!(!text.contains("Exhausted data"), "{text}");
         }
         assert_ne!(
             process_error_text(Lang::Ja, &error),
             process_error_text(Lang::En, &error)
+        );
+        assert_eq!(
+            process_error_detail(&error).as_deref(),
+            Some("Exhausted data")
+        );
+        assert_eq!(
+            process_error_detail(&ProcessError::Panic(String::new())),
+            None
         );
     }
 

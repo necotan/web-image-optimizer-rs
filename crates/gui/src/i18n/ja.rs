@@ -19,9 +19,9 @@ pub static STRINGS: Strings = Strings {
     column_status: "状態",
     status_waiting: "待機",
     status_processing: "処理中…",
-    status_done: "✓ 完了",
-    status_done_with_warning: "⚠ 完了（警告あり）",
-    status_failed: "✗ 失敗",
+    status_done: "完了",
+    status_done_with_warning: "完了（警告あり）",
+    status_failed: "失敗",
     status_skipped: "キャンセル",
 
     start: "変換開始",

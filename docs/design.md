@@ -70,7 +70,7 @@ pub fn process_error_text(lang: Lang, e: &ProcessError) -> String;
 - Text with placeholders is a `fn` field, so each language can order the words as it needs.
 - `Lang::detect()` reads the OS language with `sys-locale`. A value starting with `ja` means `Lang::Ja`; anything else, including no value, means `Lang::En`.
 - `core` has no user-facing text. It returns typed errors and events, and `process_error_text` turns them into text. The `thiserror` messages in `core` are English and are for developers only.
-- Details that come from libraries or the OS, such as decoder and I/O messages, are shown as they are, after the translated reason.
+- Details that come from libraries or the OS, such as decoder and I/O messages, cannot be translated. The screen shows only the translated reason, and the detail appears as it is when the pointer is over the reason.
 
 ## 2. Crates
 
@@ -250,7 +250,7 @@ The window is a single screen with four areas, from top to bottom. Labels below 
 
 1. **Input**: a drop area with a `Select folder` button to its right. The drop area shows `Drop a folder to select it` until a folder is set, then the folder path (e.g. `C:\Photos\2026-08-04`), shortened if it does not fit. Below them, only a folder error or `No JPEG files found` is shown.
 2. **Settings**: radio buttons for the presets `low`, `default`, and `high`, followed by a `Custom` marker shown when the values match no preset. Below them, a quality slider with its value, then a number input for the long edge in px, labeled `Long edge`, and a number input labeled `Concurrent files`.
-3. **File list**: a table with the columns `File name`, `Original size`, `Output size`, and `Status`. `Output size` is empty until the file is done. `Status` shows `Waiting`, `Processing...`, `✓ Done`, `⚠ Done (warning)`, `✗ Failed`, or `Cancelled`. Hovering a warning or failure shows the reason.
+3. **File list**: a table with the columns `File name`, `Original size`, `Output size`, and `Status`. `Output size` is empty until the file is done. `Status` shows `Waiting`, `Processing...`, `Done`, `Done (warning)`, `Failed`, or `Cancelled`, without symbols: `✗` is in neither egui's font nor the Japanese font and showed as a box. Hovering a warning or failure shows the reason.
 4. **Progress and actions**: a progress bar with the processed and total counts (e.g. `12 / 42`), with the `Start` button, or the `Cancel` button while running, to its right. Below them, on completion, the summary (e.g. `Done: 42 files / 980MB -> 71MB / 18.3s  0 failed`) and an `Open output folder` link. Files that failed or had warnings are listed below the summary with their reasons.
 
 - Phase 3 adds a `Preview` button to the left of `Start` and opens the preview in a separate window (§7.5).

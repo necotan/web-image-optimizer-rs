@@ -19,9 +19,9 @@ pub static STRINGS: Strings = Strings {
     column_status: "Status",
     status_waiting: "Waiting",
     status_processing: "Processing...",
-    status_done: "✓ Done",
-    status_done_with_warning: "⚠ Done (warning)",
-    status_failed: "✗ Failed",
+    status_done: "Done",
+    status_done_with_warning: "Done (warning)",
+    status_failed: "Failed",
     status_skipped: "Cancelled",
 
     start: "Start",
