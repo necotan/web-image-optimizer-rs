@@ -122,15 +122,15 @@ The tool has no user-facing command line; the GUI is the only interface. `core` 
 
 ## 6. Acceptance Criteria
 
-- [ ] Converting a JPEG containing GPS data and checking the result with `exiftool -a -G1 -gps:all -xmp:all <output>` prints nothing.
-- [ ] The same output, checked with `exiftool`, still has capture date, camera model, and exposure settings.
-- [ ] A photo taken in portrait (Orientation=6, etc.) displays in the correct orientation in a browser.
-- [ ] An image whose long edge is at or below the specified value is not enlarged.
-- [ ] The hash of each original file is unchanged before and after processing.
+- [x] Converting a JPEG containing GPS data and checking the result with `exiftool -a -G1 -gps:all -xmp:all <output>` prints nothing.
+- [x] The same output, checked with `exiftool`, still has capture date, camera model, and exposure settings.
+- [x] A photo taken in portrait (Orientation=6, etc.) displays in the correct orientation in a browser.
+- [x] An image whose long edge is at or below the specified value is not enlarged.
+- [x] The hash of each original file is unchanged before and after processing.
 - [ ] When a corrupt JPEG is mixed in, the other files are processed normally and it appears in the failure list.
-- [ ] Cancelling during processing leaves no partially written file in `export/`.
-- [ ] On a Windows PC without Node.js, double-clicking the executable starts it.
-- [ ] Switching the language in the GUI changes all text immediately, and the choice is restored on the next launch.
+- [x] Cancelling during processing leaves no partially written file in `export/`.
+- [x] On a Windows PC without Node.js, double-clicking the executable starts it.
+- [x] Switching the language in the GUI changes all text immediately, and the choice is restored on the next launch.
 
 ## 7. Development Phases
 

@@ -395,6 +395,7 @@ Append decisions and measurement results made during implementation.
 | 2026-11-09 | Decision on NASM in CI (was an open question): both workflows install it with Chocolatey, and the release workflow fails unless mozjpeg's `jconfig.h` has `#define WITH_SIMD 1` (§9.1). The first release run for `v0.1.0` passed every step on `windows-latest`: tests 107s, release build 267s, then the draft release. |
 | 2026-11-09 | The first CI run used stable 1.99.1 while development used 1.96.0, and failed on the new clippy lint `chunks_exact_to_as_chunks`. Decision: pin Rust 1.99.1 with `rust-toolchain.toml` for both. |
 | 2026-11-09 | Decision: upload preview images as 512×512 tiles. The GUI, driven through the same file and quality changes 59 times at 700ms intervals on the ZN6 copies: one texture per image peaked at 681MB with a floor that climbed to 368MB; tiles peaked at 498MB (392MB over idle) with a floor of 252 to 311MB, falling after the window closed. The N-04 bound for this case is 2 × 119MB + 4 × 55MB = 458MB over idle. |
+| 2026-11-10 | The published `v0.1.0` executable, downloaded from Releases, started on another Windows 11 PC without development tools (acceptance criterion: no Node.js needed). |
 
 ## 12. Open Questions
 
