@@ -512,17 +512,18 @@ impl App {
     }
 
     fn issues_ui(&self, ui: &mut egui::Ui, s: &Strings, lang: Lang) {
-        let failed: Vec<String> = self
+        let failed: Vec<(String, Option<String>)> = self
             .rows
             .iter()
             .filter_map(|r| match &r.status {
-                RowStatus::Failed(e) => {
-                    Some(format!("{}: {}", r.name, i18n::process_error_text(lang, e)))
-                }
+                RowStatus::Failed(e) => Some((
+                    format!("{}: {}", r.name, i18n::process_error_text(lang, e)),
+                    i18n::process_error_detail(e),
+                )),
                 _ => None,
             })
             .collect();
-        let warned: Vec<String> = self
+        let warned: Vec<(String, Option<String>)> = self
             .rows
             .iter()
             .filter_map(|r| match &r.status {
@@ -531,7 +532,7 @@ impl App {
                         .iter()
                         .map(|w| i18n::warning_text(lang, *w))
                         .collect();
-                    Some(format!("{}: {}", r.name, texts.join(" / ")))
+                    Some((format!("{}: {}", r.name, texts.join(" / ")), None))
                 }
                 _ => None,
             })
@@ -551,8 +552,11 @@ impl App {
                         continue;
                     }
                     ui.strong(title);
-                    for line in lines {
-                        ui.colored_label(color, line);
+                    for (line, detail) in lines {
+                        let label = ui.colored_label(color, line);
+                        if let Some(detail) = detail {
+                            label.on_hover_text(detail);
+                        }
                     }
                 }
             });
@@ -647,8 +651,13 @@ fn status_ui(ui: &mut egui::Ui, s: &Strings, lang: Lang, status: &RowStatus) {
                 .on_hover_text(texts.join("\n"));
         }
         RowStatus::Failed(error) => {
+            let mut reason = i18n::process_error_text(lang, error);
+            if let Some(detail) = i18n::process_error_detail(error) {
+                reason.push('\n');
+                reason.push_str(&detail);
+            }
             ui.colored_label(ui.visuals().error_fg_color, s.status_failed)
-                .on_hover_text(i18n::process_error_text(lang, error));
+                .on_hover_text(reason);
         }
         RowStatus::Skipped => {
             ui.weak(s.status_skipped);
