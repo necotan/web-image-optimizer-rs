@@ -25,7 +25,8 @@ The specs are the source of truth for what to build; read the relevant section b
 
 - `cargo build`: build
 - `cargo test --workspace`: tests
-- `cargo clippy --workspace -- -D warnings`: lint
+- `cargo clippy --workspace --all-targets -- -D warnings`: lint
+- `sh scripts/check.sh`: checks clippy cannot do (`nasm` on `PATH`, no UI crate under `wio-core`, no `=` version pins, no Node.js files)
 - `cargo fmt --all`: format
 - `cargo run -p wio-gui`: run the GUI
 - `cargo run --release -p wio-core --example convert -- "<folder>" high`: run the conversion without the GUI (development only)
@@ -33,8 +34,7 @@ The specs are the source of truth for what to build; read the relevant section b
 
 ## After every change
 
-- Run `cargo fmt --all`, `cargo clippy --workspace -- -D warnings`, and `cargo test --workspace`. All must pass before proposing a commit.
-- If the change touches location data removal, add a test and run it. See Location data below.
+- Run `cargo fmt --all`, `cargo clippy --workspace --all-targets -- -D warnings`, `cargo test --workspace`, and `sh scripts/check.sh`. All must pass before proposing a commit. The git `pre-commit` hook runs all but the tests; CI runs all four.
 - If behavior or a decision changed, update the spec in the same change. Record decisions and measurements in `docs/design.md` §11.
 
 ## Layout
@@ -44,6 +44,9 @@ The specs are the source of truth for what to build; read the relevant section b
 - `crates/core/tests/`: integration tests. Test JPEGs are generated in code.
 - `docs/`: only the two specs are tracked; anything else there is git-ignored local notes.
 - `.github/workflows/`: CI and the draft release build (design §9.1).
+- `.githooks/`: `pre-commit` (fmt, clippy, `scripts/check.sh`) and `commit-msg` (line 1 format). Enable once per clone: `git config core.hooksPath .githooks`.
+- `.claude/`: Claude Code settings (denied git commands) and the Stop hook that runs fmt, clippy, tests, and `scripts/check.sh`. `settings.local.json` is personal and git-ignored.
+- `scripts/check.sh`: shell only; see Old version below.
 - File-level layout: `docs/design.md` §1.
 
 ## Rules
@@ -56,7 +59,7 @@ The specs are the source of truth for what to build; read the relevant section b
 
 - MUST consult the user, with the reason, before implementing anything that differs from `docs/design.md`. Record the outcome in §11.
 - Ask first before adding a crate that is not in design §2 or replacing one that is.
-- Do not pin crate versions by hand. Add crates with `cargo add` to get the latest stable version, and check the API on docs.rs before using it.
+- Do not pin crate versions by hand (`scripts/check.sh` rejects `=` requirements). Add crates with `cargo add` to get the latest stable version, and check the API on docs.rs before using it.
 
 ### Location data
 
@@ -65,19 +68,19 @@ The specs are the source of truth for what to build; read the relevant section b
 
 ### core
 
-- `core` MUST NOT depend on any UI, including egui and printing to stdout.
+- `core` MUST NOT depend on any UI, including egui and printing to stdout. `scripts/check.sh` rejects UI crates in its dependency tree, and clippy rejects `println!`, `eprintln!`, and `dbg!`.
 - `core` MUST NOT hold user-facing text. Return typed errors and events.
-- Do not use `unwrap()` or `expect()` in `core`, except in test code. Define error types with `thiserror`.
+- Do not use `unwrap()` or `expect()` in `core`, except in test code (clippy, set in `crates/core/src/lib.rs`). Define error types with `thiserror`.
 
 ### i18n
 
-- NEVER hard-code user-facing text in the GUI. Add it to `Strings` in `crates/gui/src/i18n/`, with both `ja.rs` and `en.rs` in the same change.
+- NEVER hard-code user-facing text in the GUI. Add it to `Strings` in `crates/gui/src/i18n/`. `Strings` is a struct, so a field missing from `ja.rs` or `en.rs` is a compile error.
 - Keep state as enums and typed errors, not display text, so that a language change applies to what is already on screen.
 
 ### Old version
 
 - It is a separate repository. To check its behavior, read [`resize.mjs`](https://github.com/necotan/web-image-optimizer/blob/main/resize.mjs).
-- To compare output size and processing time, clone it outside this repository and run it there. NEVER bring Node.js files into this repository.
+- To compare output size and processing time, clone it outside this repository and run it there. NEVER bring Node.js files into this repository (`scripts/check.sh` rejects them), so write scripts and hooks in shell.
 
 ### Coding
 
@@ -91,7 +94,7 @@ The specs are the source of truth for what to build; read the relevant section b
 
 ## Git workflow
 
-- Do not run `git init`, `git checkout -b`, `commit`, `push`, PR creation, `merge`, or `pull`. The user runs them.
+- Do not run `git checkout -b`, `commit`, `push`, PR creation, `merge`, or `pull`. The user runs them.
 - At the start of work, propose a branch name (`feature/xxx` or `fix/xxx`).
 - After code changes, run `git status` and `git diff` (plus `git diff --staged` if anything is staged), then propose a commit message based on the actual diff.
 

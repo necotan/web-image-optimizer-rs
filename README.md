@@ -93,6 +93,12 @@ cargo build --release -p wio-gui
 
 The executable is `target\release\wio-gui.exe`. The specification is in [`docs/requirements.md`](docs/requirements.md) and [`docs/design.md`](docs/design.md).
 
+To commit changes, enable the Git hooks once after cloning. `pre-commit` runs `cargo fmt --check`, `cargo clippy`, and `scripts/check.sh`, and `commit-msg` checks the format of the first line.
+
+```
+git config core.hooksPath .githooks
+```
+
 ## License
 
 [MIT](LICENSE)

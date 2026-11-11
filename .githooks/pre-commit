@@ -1,0 +1,5 @@
+#!/bin/sh
+# テストは時間がかかるため CI と Claude Code の Stop フックに任せる
+cargo fmt --all --check &&
+  cargo clippy --workspace --all-targets -- -D warnings &&
+  sh scripts/check.sh
