@@ -1,4 +1,7 @@
 #![cfg_attr(not(test), deny(clippy::unwrap_used, clippy::expect_used))]
+// 画面への出力は呼び出し側の役目
+// core はイベントと型付きのエラーを返す
+#![deny(clippy::print_stdout, clippy::print_stderr, clippy::dbg_macro)]
 
 mod batch;
 mod encode;

@@ -93,6 +93,12 @@ cargo build --release -p wio-gui
 
 実行ファイルは `target\release\wio-gui.exe` にできます。仕様は [`docs/requirements.md`](docs/requirements.md) と [`docs/design.md`](docs/design.md) にあります。
 
+変更をコミットする場合は、クローン後に一度だけ Git フックを有効にします。`pre-commit` が `cargo fmt --check`、`cargo clippy`、`scripts/check.sh` を、`commit-msg` が 1 行目の書式を検査します。
+
+```
+git config core.hooksPath .githooks
+```
+
 ## ライセンス
 
 [MIT](LICENSE)

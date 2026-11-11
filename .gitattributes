@@ -1,0 +1,4 @@
+# autocrlf で CRLF になると sh がスクリプトを実行できない
+.githooks/* text eol=lf
+scripts/*.sh text eol=lf
+.claude/hooks/*.sh text eol=lf
