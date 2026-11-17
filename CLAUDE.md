@@ -101,7 +101,7 @@ The specs are the source of truth for what to build; read the relevant section b
 ## Git workflow
 
 - Do not run `git checkout -b`, `commit`, `push`, PR creation, `merge`, or `pull`. The user runs them.
-- At the start of work, propose a branch name (`feature/xxx` or `fix/xxx`).
+- At the start of work, propose a branch name (`feature/xxx` or `fix/xxx`). Say no branch is needed only when the change touches nothing that ships: docs, README, CLAUDE.md, or code comments. Changes to UI text, CSS, config, or dependencies need a branch.
 - After code changes, run `git status` and `git diff` (plus `git diff --staged` if anything is staged), then propose a commit message based on the actual diff.
 
 ## Commit messages
