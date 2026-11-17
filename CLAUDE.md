@@ -9,6 +9,12 @@
 - Write `docs/` in English, including comments in sample code.
 - Write `crates/gui/src/i18n/ja.rs` values in Japanese and `crates/gui/src/i18n/en.rs` values in English.
 - Write `README.md` in English and `README.ja.md` in Japanese, and change both in the same change.
+- In docs, code comments, and commit messages, use ASCII instead of these symbols. This does not apply to UI text.
+  - Arrows: `->` `<-` `=>` `<=>` (not `→` `←` `⇒` `⇔`)
+  - Dashes and ellipsis: `-` (not `—` `–`), `...` (not `…`)
+  - Math: `x` (not `×`), `~` (not `≒`), `>=` `<=` (not `≥` `≤`)
+  - Quotes: `"` `'` (not `“ ”` `‘ ’`)
+  - Lists and marks: `1.` `2.` (not `①` `②`), `OK` / `NG` or words (not `✓` `✗` or emoji)
 
 ## Project
 
