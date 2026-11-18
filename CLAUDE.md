@@ -97,6 +97,7 @@ The specs are the source of truth for what to build; read the relevant section b
 - Write only why: the reason for a choice, workarounds for library or OS quirks, and constraints the code alone does not show.
 - Do not write what the code or names already say (e.g. "リサイズ処理", "ファイルを読み込む"). If there is no why to explain, write no comment.
 - No decorative characters such as `---`, `===`, `***`.
+- Use `///` on a `pub` or `pub(crate)` item when callers must know something to use it correctly: rules they must follow, what the return value means, or side effects. It shows on hover and in rustdoc. Put implementation reasons in `//`, either right after the `///` lines or inside the item next to the code they explain. Use `//` for all other comments.
 
 ## Git workflow
 
