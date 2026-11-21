@@ -99,6 +99,27 @@ To commit changes, enable the Git hooks once after cloning. `pre-commit` runs `c
 git config core.hooksPath .githooks
 ```
 
+## Project Structure
+
+```text
+/
+├── crates/
+│   ├── core/                # wio-core: the conversion library, with no UI dependencies
+│   │   ├── src/             # scan.rs, pipeline.rs, orient.rs, encode.rs, metadata.rs, preset.rs, batch.rs, error.rs
+│   │   ├── tests/           # Conversion tests (conversion.rs)
+│   │   └── examples/        # convert.rs (for comparison and checking with exiftool)
+│   └── gui/                 # wio-gui: the egui app (the executable)
+│       └── src/             # main.rs, app.rs, preview.rs, fonts.rs, i18n/ (ja.rs, en.rs)
+├── docs/                    # Specs (requirements.md, design.md)
+├── scripts/
+│   └── check.sh             # Checks clippy can't cover (NASM on PATH, wio-core not depending on UI crates, etc.)
+├── .github/workflows/       # ci.yml (fmt, clippy, test, check.sh), release.yml (build and create a draft release on a v* tag)
+├── .githooks/               # pre-commit, commit-msg
+├── .cargo/config.toml       # Static CRT link so the exe runs without the VC++ runtime
+├── rust-toolchain.toml      # Rust version pinned for local and CI
+└── Cargo.toml               # Workspace and release profile
+```
+
 ## License
 
 [MIT](LICENSE)

@@ -99,6 +99,27 @@ cargo build --release -p wio-gui
 git config core.hooksPath .githooks
 ```
 
+## プロジェクト構成
+
+```text
+/
+├── crates/
+│   ├── core/                # wio-core: 変換のライブラリ（UI に依存しない）
+│   │   ├── src/             # scan.rs, pipeline.rs, orient.rs, encode.rs, metadata.rs, preset.rs, batch.rs, error.rs
+│   │   ├── tests/           # 変換のテスト（conversion.rs）
+│   │   └── examples/        # convert.rs（比較と exiftool での確認用）
+│   └── gui/                 # wio-gui: egui のアプリ（実行ファイル）
+│       └── src/             # main.rs, app.rs, preview.rs, fonts.rs, i18n/（ja.rs, en.rs）
+├── docs/                    # 仕様書（requirements.md, design.md）
+├── scripts/
+│   └── check.sh             # clippy で調べられない検査（NASM の有無、wio-core が UI のクレートに依存していないか など）
+├── .github/workflows/       # ci.yml（fmt, clippy, テスト, check.sh）、release.yml（v* タグでビルドしてリリースの下書きを作成）
+├── .githooks/               # pre-commit, commit-msg
+├── .cargo/config.toml       # VC++ ランタイムのない PC でも exe 単体で動くよう CRT を静的リンク
+├── rust-toolchain.toml      # 手元と CI でそろえる Rust のバージョン
+└── Cargo.toml               # ワークスペースとリリースビルドの設定
+```
+
 ## ライセンス
 
 [MIT](LICENSE)
